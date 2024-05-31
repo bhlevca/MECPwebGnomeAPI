@@ -9,8 +9,7 @@ from webgnome_api.common.views import (cors_policy, create_object, get_object,
 concentration = Service(name='concentration', path='/concentration*obj_id',
                 description="Concentration API", cors_policy=cors_policy)
 
-implemented_types = ('gnome.concentration.concentration_location.ConcentrationLocation',
-                     )
+implemented_types = ('gnome.concentration.concentration_location.ConcentrationLocation',)
 
 
 @concentration.get()

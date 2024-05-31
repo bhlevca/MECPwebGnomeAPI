@@ -206,7 +206,7 @@ def process_upload(request):
     # for each file, process into server
     input_file = request.POST['file'].file
     fn = request.POST['file'].filename
-    file_name, unique_name = gen_unique_filename(fn, upload_dir)
+    file_name, unique_name, appendix = gen_unique_filename(fn, upload_dir)
     file_path = os.path.join(upload_dir, unique_name)
 
     size = get_size_of_open_file(input_file)

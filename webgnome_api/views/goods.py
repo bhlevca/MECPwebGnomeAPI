@@ -158,7 +158,7 @@ def get_goods_map(request):
                             HTTPInsufficientStorage('Not enough space '
                                                     'to save the file'))
 
-    file_name, unique_name = gen_unique_filename(fn, upload_dir)
+    file_name, unique_name, appendix = gen_unique_filename(fn, upload_dir)
 
     file_path = os.path.join(upload_dir, unique_name)
 
@@ -214,7 +214,7 @@ def create_goods_request(request):
     start = params['start_time']
     end = params['end_time']
     fname = params['model_name'] + '_' + start.split('T')[0] + '_' + end.split('T')[0] + '.nc'
-    file_name, unique_name = gen_unique_filename(fname, upload_dir)
+    file_name, unique_name, appendix = gen_unique_filename(fname, upload_dir)
     output_path = os.path.join(upload_dir, unique_name)
     with open(output_path,'w') as fn:
         pass

@@ -70,6 +70,9 @@ class PyGnomeSchemaTweenFactory(object):
                     json_data[k] = self.fix_filename(request,
                                                      json_data['obj_type'],
                                                      v)
+                elif k == 'water_depth_dfsu_file':
+                    session_dir = get_session_dir(request)
+                    json_data[k] = os.path.join(session_dir, v)
                 else:
                     self.fix_filename_attrs(request, v)
         elif isinstance(json_data, (list, tuple)):

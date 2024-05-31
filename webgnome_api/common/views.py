@@ -200,7 +200,7 @@ def create_object(request, implemented_types):
         log.info('  ' + log_prefix + 'creating ' + json_request['obj_type'])
         obj = CreateObject(json_request, get_session_objects(request))
         RegisterObject(obj, request)
-    except Exception:
+    except Exception as e:
         raise cors_exception(request, HTTPUnsupportedMediaType,
                              with_stacktrace=True)
     finally:
@@ -318,7 +318,7 @@ def process_upload(request, field_name):
     log.info('can_persist?: {}'.format(can_persist))
 
     input_file = request.POST[field_name].file
-    file_name, unique_name = gen_unique_filename(request.POST[field_name]
+    file_name, unique_name, appendix = gen_unique_filename(request.POST[field_name]
                                                  .filename)
     file_path = os.path.join(upload_dir, unique_name)
 
@@ -373,7 +373,7 @@ def activate_uploaded(request):
                                                request.POST['file-name'])
     log.info('upload_dir: {}'.format(upload_dir))
 
-    file_name, unique_name = gen_unique_filename(request.POST['file-name'])
+    file_name, unique_name, appendix = gen_unique_filename(request.POST['file-name'])
     src_path = os.path.join(upload_dir, file_name)
     dest_path = os.path.join(session_dir, unique_name)
 
@@ -396,7 +396,7 @@ def activate_uploaded(request):
     return dest_path, file_name
 
 
-def gen_unique_filename(filename_in, upload_dir=None):
+def gen_unique_filename(filename_in, upload_dir=None, appendix = -1):
     # add uuid to the file name in case the user accidentally uploads
     # multiple files with the same name for different objects.
     if upload_dir:
@@ -404,20 +404,25 @@ def gen_unique_filename(filename_in, upload_dir=None):
         file_name, extension = get_file_name_ext(filename_in)
         fmtstring = file_name + '{0}' + extension
         new_fn = fmtstring.format('')
-        i = 1
-
-        while i < 255:
-            if new_fn not in existing_files:
-                return (file_name + extension, new_fn)
-            else:
-                new_fn = fmtstring.format(' (' + str(i) + ')')
-                i += 1
+        
+        
+        if appendix > 0:
+            new_fn = fmtstring.format(' (' + str(appendix) + ')')
+            return (file_name + extension, new_fn, appendix)
+        else:
+            i = 1
+            while i < 255:
+                if new_fn not in existing_files:
+                    return (file_name + extension, new_fn, i-1)
+                else:
+                    new_fn = fmtstring.format(' (' + str(i) + ')')
+                    i += 1
 
         raise ValueError('File uploaded too many times')
     else:
         file_name, extension = get_file_name_ext(filename_in)
         return (file_name + extension,
-                file_name + '-' + str(uuid.uuid4()) + extension)
+                file_name + '-' + str(uuid.uuid4()) + extension, -1)
 
 
 def get_file_name_ext(filename_in):

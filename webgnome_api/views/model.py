@@ -33,6 +33,7 @@ from webgnome_api.common.views import (cors_exception, cors_policy,
                                        get_object, switch_to_existing_session,
                                        web_ser_opts)
 from webgnome_api.views.mover import create_mover
+from webgnome_api.views.outputter import update_outputter
 
 from ..common.common_object import get_persistent_dir, get_session_dir
 from ..common.system_resources import write_to_file
@@ -76,6 +77,8 @@ def create_mike_hd_config(request):
         os.makedirs(config_path)
     with open(os.path.join(config_path, 'Config.json'), 'w') as f:
         f.write(ujson.dumps(config))
+
+    return my_model.lake
 
 
 mike_hd_status_file = r'C:\temp\webgnome_mike_hd_status.txt'
@@ -123,7 +126,7 @@ def get_hd_status():
         return -2
 
 
-def run_hd():
+def run_hd(lake):
     """
     Trigger HD Model Run
 
@@ -151,7 +154,7 @@ def run_hd():
             "workflows",
             "webgnome_workflows.json")
         if os.path.exists(wf_designer) and os.path.exists(wf):
-            cmd = f'"{wf_designer}" -run local -filename "{wf}" -workflowid "Prepare and Run HD Model"'
+            cmd = f'"{wf_designer}" -run local -filename "{wf}" -workflowid "Run HD Model - {lake}"'
             update_hd_status_file(1)
             subprocess.Popen(cmd)
             return 0, "Model Started"
@@ -163,10 +166,10 @@ def run_hd():
 def copy_netcdf(request):
     return copy_file(request, mike_hd_result_netcdf_folder,".nc")
 
-def copy_dfsu(request):
-    return copy_file(request,mike_hd_result_folder, "2D all.dfsu")
+def copy_dfsu(request, appendix):
+    return copy_file(request,mike_hd_result_folder, "2D all.dfsu", appendix)
 
-def copy_file(request, folder, extension):
+def copy_file(request, folder, extension, appendix = -1):
     """
     Copy the resulting NetCDF file to the session folder
 
@@ -188,15 +191,15 @@ def copy_file(request, folder, extension):
     if os.path.isdir(folder) and os.path.exists(folder):
         nc_files = [x for x in os.listdir(folder) if extension in x]
         if len(nc_files) > 0:
-            fn = nc_files[0]
+            fn = nc_files[0]            
             input_file = os.path.join(folder, fn)
             upload_dir = os.path.relpath(get_session_dir(request))
-            file_name, unique_name = gen_unique_filename(
-                fn, upload_dir)
+            file_name, unique_name, appendix = gen_unique_filename(
+                fn, upload_dir, appendix)
             file_path = os.path.join(upload_dir, unique_name)
             write_to_file(input_file, file_path)
 
-            return unique_name, file_path
+            return unique_name, file_path, appendix
         else:
             return "", ""
 
@@ -208,8 +211,8 @@ def run_mikehd(request):
     '''
         run mike hd model
     '''
-    create_mike_hd_config(request)
-    code, drescription = run_hd()
+    lake = create_mike_hd_config(request)
+    code, drescription = run_hd(lake)
     return cors_response(request, Response(ujson.dumps(
         {'code': code, 'description': drescription})))
 
@@ -227,16 +230,18 @@ def get_mikehd_netcdf(request):
     status = get_hd_status()
     if status == 1 or status == -1:
         return cors_response(request, Response(
-            ujson.dumps({'error_code': status})))
+            ujson.dumps({'error_code': status})))        
 
     # copy netcdf and 2D all.dfsu to session folder
-    file_name, filepath = copy_netcdf(request)
-    copy_dfsu(request)
+    file_name, filepath, appendix = copy_netcdf(request)   
+
+    #create DfsuWaterDepth
+    copy_dfsu(request, appendix)
 
     # create the mover
     # borrow from upload_mover
     if len(file_name) > 0 and os.path.exists(filepath):
-        mover_type = 'gnome.movers.py_current_movers.PyCurrentMover'
+        mover_type = 'gnome.movers.py_current_movers.CurrentMover'
         name = 'MIKE HD'
         basic_json = {'obj_type': mover_type,
                       'filename': filepath,
@@ -251,7 +256,7 @@ def get_mikehd_netcdf(request):
                                       'filename': filepath}
                              }
 
-        if ('PyCurrentMover' in mover_type):
+        if ('py_current_movers.CurrentMover' in mover_type):
             env_obj_base_json['obj_type'] = ('gnome.environment'
                                              '.environment_objects.GridCurrent')
             basic_json['current'] = env_obj_base_json
