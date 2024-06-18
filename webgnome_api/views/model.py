@@ -41,11 +41,15 @@ from ..common.system_resources import write_to_file
 log = logging.getLogger(__name__)
 model = Service(name='model', path='/model*obj_id', description="Model API",
                 cors_policy=cors_policy)
+
 mikehd = Service(name='mikehd', path='/mikehd', description="MIKE HD API",
                  cors_policy=cors_policy)
 
 mikehdnetcdf = Service(name='mikehdnetcdf', path='/mikehdnetcdf', description="MIKE HD API",
                        cors_policy=cors_policy)
+
+mikehdstatus = Service(name='mikehdstatus', path='/mikehdstatus', description="MIKE HD API",
+                 cors_policy=cors_policy)
 
 implemented_types = ('gnome.model.Model',
                      )
@@ -215,6 +219,15 @@ def run_mikehd(request):
     code, drescription = run_hd(lake)
     return cors_response(request, Response(ujson.dumps(
         {'code': code, 'description': drescription})))
+
+@mikehdstatus.get()
+def retrieve_hd_status(request):
+    '''
+        get hd status
+    '''
+    status = get_hd_status()
+    return cors_response(request, Response(ujson.dumps(
+        {'status': status})))
 
 
 @mikehdnetcdf.post()
